@@ -1,5 +1,6 @@
 import {Route, Routes} from "react-router-dom";
-import { AuthPage } from " ../../features/auth/pages/AuthPage";
+import { AuthPage } from "../../features/auth/pages/AuthPage";
+import { DashboardPage } from "../layout/DashboardPage";
 
 export const AppRoutes = ()=> {
 
@@ -7,9 +8,10 @@ export const AppRoutes = ()=> {
         <Routes>
             {/* PÚBLICAS */}
             <Route path="/" element={<AuthPage />} />
-
+            
+            {/* PROTEGIDO POR ROLE*/}
+            <Route path="/dashboard/*" element={<DashboardPage />} />
         </Routes>
-
     );
 
 };
