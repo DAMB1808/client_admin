@@ -1,6 +1,12 @@
 export const ForgotPasswordForm = ({ onSwitch }) => {
     return (
-        <form className="space-y-5">
+        <form
+            className="space-y-5"
+            onSubmit={(e) => {
+                e.preventDefault();
+                console.log("Correo enviado");
+            }}
+        >
             <div>
                 <label className="block text-sm font-medium text-gray-800 mb-1.5">
                     Email
