@@ -41,7 +41,7 @@ const AuthPage = () => {
 
                 {isForgot
                 ? "Formulario"
-                :
+                : "Ca"
 
                 }
              </div>
