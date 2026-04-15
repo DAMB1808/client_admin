@@ -4,8 +4,8 @@ import { Sidebar } from "./Sidebar";
 // VISTAS
 
 // features/auth
-//import { Spinner } from "@material-tailwind/react";
-//import { ResetPasswordForm } from "../../../features/auth/components/ResetPasswordForm";
+import { Spinner } from "@material-tailwind/react";
+import { ResetPasswordForm } from "../../../features/auth/components/ResetPasswordForm";
 //import { ShowConfirmToast } from "../../../features/auth/components/ShowConfirmToast";
 
 
@@ -53,8 +53,8 @@ export const DashboardContainer = () => {
         <Sidebar />
         
         <main className="flex-1 p-6">
-          {/* <Spinner/> */}
-          {/* <ResetPasswordForm /> */}
+          { <Spinner/> }
+          { <ResetPasswordForm /> }
           {/* <ShowConfirmToast /> */}
 
           {/* <Fields/> */}
