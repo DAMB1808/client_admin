@@ -1,64 +1,62 @@
 import axios from 'axios';
-import { useAuthStore } from '../../features/auth/store/authStore.js';
 
-// Instancia auth
+import { useAuthStore } from "../../features/auth/store/authStore.js";
+
 const axiosAuth = axios.create({
-  baseURL: import.meta.env.VITE_AUTH_URL,
-  timeout: 8000,
-  headers: { 'Content-Type': 'application/json' },
+    baseURL: import.meta.env.VITE_AUTH_URL,
+    timeout: 8000,
+    headers:{
+        "Content-Type": "Application/json",
+    }
 });
 
-// Instancia admin ✅ faltaba esta
-const axiosAdmin = axios.create({
-  baseURL: import.meta.env.VITE_ADMIN_URL,
-  timeout: 8000,
-  headers: { 'Content-Type': 'application/json' },
-});
+axiosAuth.interceptors.request.use( (config)=>{
+    config._axiosClient = "auth";
+    const token = useAuthStore.getState().token;
+    if(token){
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+} );
 
-// Interceptores de request
-axiosAuth.interceptors.request.use((config) => {
-  config._axiosClient = 'auth';
-  const token = useAuthStore.getState().token;
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-axiosAdmin.interceptors.request.use((config) => {
-  config._axiosClient = 'admin';
-  const token = useAuthStore.getState().token;
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-// Refresh token
+// configuración de documentación axios
 let _isRefreshing = false;
 let failedQueue = [];
-
+ 
 function _processQueue(_error, token = null) {
   failedQueue.forEach(({ resolve, reject }) =>
     _error ? reject(_error) : resolve(token),
   );
   failedQueue = [];
 }
-
+ 
 const handleRefreshToken = async function (_error) {
   const _original = _error.config;
-  if (!_original || _original._retry) return Promise.reject(_error);
-
+  if (!_original || _original._retry) {
+    // Ya se reintentó o no hay config
+    return Promise.reject(_error);
+  }
   const status = _error.response?.status;
   const errorCode = _error.response?.data?.error;
   const requestUrl = _original.url || "";
   const isRefreshEndpoint = requestUrl.includes("/auth/refresh");
-
-  const shouldRefresh =
-    (!isRefreshEndpoint && status === 401) ||
-    (!isRefreshEndpoint && status === 403 && errorCode === "TOKEN_EXPIRED");
-
+  const shouldAttemptRefresh =
+    !isRefreshEndpoint &&
+    // La mayoría de casos es 401 (TokenExpiredError)
+    status === 401;
+ 
+  // Algunos servicios pueden responder 403 con `error: TOKEN_EXPIRED`
+  const shouldAttemptRefreshFrom403 =
+    !isRefreshEndpoint && status === 403 && errorCode === "TOKEN_EXPIRED";
+ 
+  const shouldRefresh = shouldAttemptRefresh || shouldAttemptRefreshFrom403;
+ 
   if (shouldRefresh) {
-    const retryClient = _original._axiosClient === "admin" ? axiosAdmin : axiosAuth;
-
+    const retryClient =
+      _original._axiosClient === "admin" ? axiosAdmin : axiosAuth;
     if (_isRefreshing) {
-      return new Promise((resolve, reject) => {
+      // Si ya hay un refresh en curso, encola la petición
+      return new Promise(function (resolve, reject) {
         failedQueue.push({ resolve, reject });
       })
         .then((token) => {
@@ -67,20 +65,21 @@ const handleRefreshToken = async function (_error) {
         })
         .catch((err) => Promise.reject(err));
     }
-
     _original._retry = true;
     _isRefreshing = true;
-
     const refreshToken = useAuthStore.getState().refreshToken;
     if (!refreshToken) {
       useAuthStore.getState().logout();
       return Promise.reject(_error);
     }
-
     try {
       const response = await axiosAuth.post("/auth/refresh", { refreshToken });
-      const { accessToken, refreshToken: newRefreshToken, expiresIn, userDetails } = response.data;
-
+      const {
+        accessToken,
+        refreshToken: newRefreshToken,
+        expiresIn,
+        userDetails,
+      } = response.data;
       useAuthStore.setState({
         token: accessToken,
         refreshToken: newRefreshToken,
@@ -88,7 +87,6 @@ const handleRefreshToken = async function (_error) {
         user: userDetails || useAuthStore.getState().user,
         isAuthenticated: true,
       });
-
       _processQueue(null, accessToken);
       _original.headers["Authorization"] = "Bearer " + accessToken;
       return retryClient(_original);
@@ -100,19 +98,14 @@ const handleRefreshToken = async function (_error) {
       _isRefreshing = false;
     }
   }
-
   return Promise.reject(_error);
 };
-
+ 
 axiosAuth.interceptors.response.use((res) => res, handleRefreshToken);
-axiosAdmin.interceptors.response.use((res) => res, handleRefreshToken);
-
-// ✅ Export completo
-export { axiosAuth, axiosAdmin, handleRefreshToken };
-// Al final de api.js, agrega esto:
-export const login = async ({ emailOrUsername, password }) => {
-    return await axiosAuth.post("/api/v1/auth/login", {
-        emailOrUsername,
-        password,
-    });
-};
+ 
+//axiosAdmin.interceptors.response.use((res) => res, handleRefreshToken);
+ 
+// ================= EXPORT AXIOS =================
+//export { axiosAuth, axiosAdmin };
+export { axiosAuth };
+export { handleRefreshToken };

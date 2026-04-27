@@ -1,3 +1,5 @@
-export *  from './auth'
-// export *  from './admin'
-export {axiosAuth, axiosAdmin, handleRefreshToken} from '../../shared/Api/api.js';
+// This file exports modules for authentication and admin functionalities
+export * from "./auth";
+//export * from "./admin";
+export { axiosAuth, handleRefreshToken } from "./api";
+export * from "./api.js";
