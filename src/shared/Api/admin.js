@@ -1,4 +1,4 @@
-import { axiosAdmin } from "../api";
+import { axiosAdmin } from "./api";
  
 // ================= TOURNAMENTS =================
 export const getTournaments = async () => {
