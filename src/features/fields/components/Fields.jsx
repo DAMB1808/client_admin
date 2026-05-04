@@ -4,15 +4,10 @@ import { useUIStore } from "../../auth/store/uiStore";
 import { showError } from "../../../shared/utils/toast";
 import { FieldModal } from "./FieldModal";
 
-export const Fields = () => {
-  const {
-    fields,
-    loading,
-    error,
-    getFields,
-    deleteField,
-  } = useFieldsStore();
+import placeholderImg from "../../../assets/img/avatarDefault.png";
 
+export const Fields = () => {
+  const { fields, loading, error, getFields, deleteField } = useFieldsStore();
   const { openConfirm } = useUIStore();
 
   const [openModal, setOpenModal] = useState(false);
@@ -31,33 +26,14 @@ export const Fields = () => {
   return (
     <div className="p-4">
 
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-main-blue">
-            Gestión de Canchas
-          </h1>
-          <p className="text-gray-500 text-sm">
-            Administra las canchas registradas
-          </p>
-        </div>
-
-        <button
-          onClick={() => {
-            setSelectedField(null);
-            setOpenModal(true);
-          }}
-          className="bg-main-blue px-4 py-2 rounded text-white"
-        >
-          + Agregar Campo
-        </button>
+      {/* HEADER */}
+      <div className="flex justify-between mb-8">
+        <h1 className="text-3xl font-bold text-main-blue">
+          Gestión de Canchas
+        </h1>
       </div>
 
-      {loading && (
-        <div className="text-center py-10 text-gray-500">
-          Cargando campos...
-        </div>
-      )}
-
+      {/* GRID */}
       {!loading && (
         <div className="grid sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 
@@ -65,22 +41,27 @@ export const Fields = () => {
             <p className="text-gray-500">No hay campos disponibles</p>
           ) : (
             safeFields.map((field) => (
-              <div key={field._id} className="bg-white rounded-xl shadow-md">
+              <div key={field._id} className="bg-white rounded-xl shadow-md overflow-hidden">
 
+                {/* IMAGEN CORREGIDA */}
                 <div className="w-full h-52 bg-gray-100 flex items-center justify-center">
                   <img
-                    src={field.photo || "https://via.placeholder.com/300x200"}
+                    src={field.photo || placeholderImg}
                     alt={field.fieldName}
                     className="max-h-full max-w-full object-contain"
+                    onError={(e) => {
+                      e.target.src = placeholderImg;
+                    }}
                   />
                 </div>
 
+                {/* CONTENIDO */}
                 <div className="p-5">
-                  <h2 className="text-xl font-bold">
+                  <h2 className="text-xl font-bold text-main-blue">
                     {field.fieldName}
                   </h2>
 
-                  <div className="flex gap-2 mt-2 flex-wrap">
+                  <div className="flex gap-2 mt-2">
                     <span className="px-3 py-1 text-xs bg-blue-100">
                       {field.capacity?.replace("_", " ")}
                     </span>
@@ -90,13 +71,14 @@ export const Fields = () => {
                     </span>
                   </div>
 
+                  {/* BOTONES */}
                   <div className="flex gap-3 mt-5">
                     <button
                       onClick={() => {
                         setSelectedField(field);
                         setOpenModal(true);
                       }}
-                      className="flex-1 py-2 bg-blue-600 text-white"
+                      className="flex-1 py-2 bg-main-blue text-white rounded"
                     >
                       Editar
                     </button>
@@ -109,7 +91,7 @@ export const Fields = () => {
                           onConfirm: () => deleteField(field._id),
                         })
                       }
-                      className="flex-1 py-2 bg-red-600 text-white"
+                      className="flex-1 py-2 bg-red-600 text-white rounded"
                     >
                       Eliminar
                     </button>
@@ -123,6 +105,7 @@ export const Fields = () => {
         </div>
       )}
 
+      {/* MODAL */}
       <FieldModal
         isOpen={openModal}
         onClose={() => {
