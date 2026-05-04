@@ -7,79 +7,106 @@ import {
   getAllReservations as getAllReservationsRequest,
   confirmReservation as confirmReservationRequest,
 } from "../../../shared/api";
- 
+
 export const useFieldsStore = create((set, get) => ({
   fields: [],
   reservations: [],
   loading: false,
   error: null,
- 
+
   getFields: async () => {
     try {
       set({ loading: true, error: null });
- 
+
       const response = await getFieldsRequest();
- 
+
+      const data = response?.data?.data;
+
       set({
-        fields: response.data.data,
+        fields: Array.isArray(data) ? data : [],
         loading: false,
       });
+
     } catch (error) {
       set({
-        error: error.response?.data?.message || "Error al obtener canchas",
+        fields: [],
         loading: false,
+        error:
+          error.code === "ERR_NETWORK"
+            ? "Error de conexión con el servidor"
+            : error.response?.data?.message || "Error al obtener canchas",
       });
     }
   },
- 
+
   createField: async (formData) => {
     try {
       set({ loading: true, error: null });
- 
+
       const response = await createFieldRequest(formData);
- 
+
+      const newField = response?.data?.data;
+
       set({
-        fields: [response.data.data, ...get().fields],
+        fields: newField
+          ? [newField, ...get().fields]
+          : get().fields,
         loading: false,
       });
+
     } catch (error) {
       set({
         loading: false,
-        error: error.response?.data?.message || "Error al crear campo",
+        error:
+          error.code === "ERR_NETWORK"
+            ? "Error de conexión con el servidor"
+            : error.response?.data?.message || "Error al crear campo",
       });
     }
   },
-  // ...rest of logic
- 
+
   getAllReservations: async () => {
     try {
       set({ loading: true, error: null });
+
       const response = await getAllReservationsRequest();
+
+      const data = response?.data?.data;
+
       set({
-        reservations: response.data.data,
+        reservations: Array.isArray(data) ? data : [],
         loading: false,
       });
+
     } catch (error) {
       set({
+        reservations: [],
         error:
-          error.response?.data?.message || "Error al obtener reservaciones",
+          error.code === "ERR_NETWORK"
+            ? "Error de conexión con el servidor"
+            : error.response?.data?.message || "Error al obtener reservaciones",
         loading: false,
       });
     }
   },
- 
+
   confirmReservation: async (id) => {
     try {
       set({ loading: true, error: null });
+
       await confirmReservationRequest(id);
-      // Refrescar lista después de confirmar
+
       await get().getAllReservations();
+
       set({ loading: false });
+
     } catch (error) {
       set({
-        error:
-          error.response?.data?.message || "Error al confirmar reservación",
         loading: false,
+        error:
+          error.code === "ERR_NETWORK"
+            ? "Error de conexión con el servidor"
+            : error.response?.data?.message || "Error al confirmar reservación",
       });
     }
   },

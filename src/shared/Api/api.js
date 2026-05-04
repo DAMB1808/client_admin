@@ -1,39 +1,45 @@
-import axios from 'axios';
+import axios from "axios";
 import { useAuthStore } from "../../features/auth/store/authStore.js";
 
 // ================= AXIOS AUTH =================
 const axiosAuth = axios.create({
   baseURL: import.meta.env.VITE_AUTH_URL,
-  timeout: 8000,
+  timeout: 20000,
   headers: {
     "Content-Type": "application/json",
-  }
+  },
 });
 
 axiosAuth.interceptors.request.use((config) => {
   config._axiosClient = "auth";
+
   const token = useAuthStore.getState().token;
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
   return config;
 });
 
 // ================= AXIOS ADMIN =================
 const axiosAdmin = axios.create({
   baseURL: import.meta.env.VITE_ADMIN_URL,
-  timeout: 8000,
+  timeout: 20000,
   headers: {
     "Content-Type": "application/json",
-  }
+  },
 });
 
 axiosAdmin.interceptors.request.use((config) => {
   config._axiosClient = "admin";
+
   const token = useAuthStore.getState().token;
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
   return config;
 });
 
@@ -41,62 +47,51 @@ axiosAdmin.interceptors.request.use((config) => {
 let _isRefreshing = false;
 let failedQueue = [];
 
-function _processQueue(_error, token = null) {
+function _processQueue(error, token = null) {
   failedQueue.forEach(({ resolve, reject }) =>
-    _error ? reject(_error) : resolve(token)
+    error ? reject(error) : resolve(token)
   );
   failedQueue = [];
 }
 
-const handleRefreshToken = async function (_error) {
-  const _original = _error.config;
+const handleRefreshToken = async (error) => {
+  const original = error.config;
 
-  if (!_original || _original._retry) {
-    return Promise.reject(_error);
+  if (!original || original._retry) {
+    return Promise.reject(error);
   }
 
-  const status = _error.response?.status;
-  const errorCode = _error.response?.data?.error;
-  const requestUrl = _original.url || "";
+  const status = error.response?.status;
+  const errorCode = error.response?.data?.error;
+  const requestUrl = original.url || "";
 
   const isRefreshEndpoint = requestUrl.includes("/auth/refresh");
 
-  const shouldAttemptRefresh =
-    !isRefreshEndpoint && status === 401;
-
-  const shouldAttemptRefreshFrom403 =
-    !isRefreshEndpoint &&
-    status === 403 &&
-    errorCode === "TOKEN_EXPIRED";
-
   const shouldRefresh =
-    shouldAttemptRefresh || shouldAttemptRefreshFrom403;
+    !isRefreshEndpoint &&
+    (status === 401 || (status === 403 && errorCode === "TOKEN_EXPIRED"));
 
   if (shouldRefresh) {
     const retryClient =
-      _original._axiosClient === "admin"
-        ? axiosAdmin
-        : axiosAuth;
+      original._axiosClient === "admin" ? axiosAdmin : axiosAuth;
 
     if (_isRefreshing) {
       return new Promise((resolve, reject) => {
         failedQueue.push({ resolve, reject });
-      })
-        .then((token) => {
-          _original.headers["Authorization"] = "Bearer " + token;
-          return retryClient(_original);
-        })
-        .catch((err) => Promise.reject(err));
+      }).then((token) => {
+        original.headers.Authorization = "Bearer " + token;
+        return retryClient(original);
+      });
     }
 
-    _original._retry = true;
+    original._retry = true;
     _isRefreshing = true;
 
     const refreshToken = useAuthStore.getState().refreshToken;
 
     if (!refreshToken) {
       useAuthStore.getState().logout();
-      return Promise.reject(_error);
+      return Promise.reject(error);
     }
 
     try {
@@ -115,16 +110,15 @@ const handleRefreshToken = async function (_error) {
         token: accessToken,
         refreshToken: newRefreshToken,
         expiresAt: expiresIn,
-        user: userDetails || useAuthStore.getState().user,
+        user: userDetails,
         isAuthenticated: true,
       });
 
       _processQueue(null, accessToken);
 
-      _original.headers["Authorization"] =
-        "Bearer " + accessToken;
+      original.headers.Authorization = "Bearer " + accessToken;
 
-      return retryClient(_original);
+      return retryClient(original);
 
     } catch (err) {
       _processQueue(err, null);
@@ -135,18 +129,28 @@ const handleRefreshToken = async function (_error) {
     }
   }
 
-  return Promise.reject(_error);
+  return Promise.reject(error);
 };
 
 // ================= INTERCEPTORS =================
 axiosAuth.interceptors.response.use(
   (res) => res,
-  handleRefreshToken
+  (error) => {
+    if (error.code === "ERR_NETWORK") {
+      console.error("Auth API no disponible");
+    }
+    return handleRefreshToken(error);
+  }
 );
 
 axiosAdmin.interceptors.response.use(
   (res) => res,
-  handleRefreshToken
+  (error) => {
+    if (error.code === "ERR_NETWORK") {
+      console.error("Admin API no disponible");
+    }
+    return handleRefreshToken(error);
+  }
 );
 
 // ================= EXPORTS =================
