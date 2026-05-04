@@ -2,22 +2,21 @@ import { useEffect, useState } from "react";
 import { useEffect as useToastEffect } from "react";
 
 import { useFieldsStore } from "../../users/store/adminStore";
-import { useUIStore} from "../../auth/store/uiStore";
+import { useUIStore } from "../../auth/store/uiStore";
 
 import { showError } from "../../../shared/utils/toast";
-import { spinner } from "@material-tailwind/react";
 import { FieldModal } from "./FieldModal";
-
 
 export const Fields = () => {
 
-    const{ fields, loading, error, getFields} = useFieldsStore();
+    // 👇 DEFAULT PARA EVITAR undefined
+    const { fields = [], loading, error, getFields, deleteField } = useFieldsStore();
     const { openConfirm } = useUIStore();
 
     const [openModal, setOpenModal] = useState(false);
-    const [selectField, setSelectField] = useState(null);
+    const [selectedField, setSelectedField] = useState(null);
 
-    useEffect(()=>{
+    useEffect(() => {
         getFields();
     }, [getFields]);
 
@@ -27,6 +26,7 @@ export const Fields = () => {
 
     return (
         <div className="p-4">
+
             {/* HEADER */}
             <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8">
                 <div>
@@ -38,65 +38,110 @@ export const Fields = () => {
                     </p>
                 </div>
 
-                <button className="bg-main-blue px-4 py-2 rounded text-white hover:opacity-90 transition">
+                <button
+                    onClick={() => {
+                        setSelectedField(null);
+                        setOpenModal(true);
+                    }}
+                    className="bg-main-blue px-4 py-2 rounded text-white hover:opacity-90 transition"
+                >
                     + Agregar Campo
                 </button>
             </div>
 
+            {/* LOADING */}
+            {loading && (
+                <div className="text-center py-10 text-gray-500">
+                    Cargando campos...
+                </div>
+            )}
+
             {/* GRID */}
-                {fields.map((filed)=>{
-                    
-                })}
+            {!loading && (
                 <div className="grid sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 
-                {/* CARD */}
-                <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:scale-[1.02]">
+                    {/* 👇 VALIDACIÓN EXTRA (doble seguridad) */}
+                    {fields.length === 0 ? (
+                        <p className="text-gray-500">No hay campos disponibles</p>
+                    ) : (
+                        fields.map((field) => (
+                            <div
+                                key={field._id}
+                                className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:scale-[1.02]"
+                            >
+                                {/* IMAGEN */}
+                                <div className="w-full h-52 bg-gray-100 flex items-center justify-center">
+                                    <img
+                                        src={field.photo || "https://via.placeholder.com/300x200"}
+                                        alt={field.fieldName}
+                                        className="max-h-full max-w-full object-contain rounded-t-xl"
+                                    />
+                                </div>
 
-                    {/* IMAGEN */}
-                    <div className="w-full h-52 bg-gray-100 flex items-center justify-center">
-                        <img
-                            src="https://via.placeholder.com/300x200"
-                            alt="Campo"
-                            className="max-h-full max-w-full object-contain rounded-t-xl"
-                        />
-                    </div>
+                                {/* CONTENIDO */}
+                                <div className="p-5">
+                                    <h2 className="text-xl font-bold text-main-blue">
+                                        {field.fieldName}
+                                    </h2>
 
-                    {/* CONTENIDO */}
-                    <div className="p-5">
-                        <h2 className="text-xl font-bold text-main-blue">
-                            Nombre del Campo
-                        </h2>
+                                    {/* BADGES */}
+                                    <div className="flex gap-2 mt-2 flex-wrap">
+                                        <span className="px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-700 font-medium">
+                                            {field.capacity?.replace("_", " ")}
+                                        </span>
 
-                        {/* BADGES */}
-                        <div className="flex gap-2 mt-2 flex-wrap">
-                            <span className="px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-700 font-medium">
-                                5 vs 5
-                            </span>
+                                        <span className="px-3 py-1 text-xs rounded-full bg-green-100 text-green-700 font-medium">
+                                            Q{field.pricePerHour}/hora
+                                        </span>
+                                    </div>
 
-                            <span className="px-3 py-1 text-xs rounded-full bg-green-100 text-green-700 font-medium">
-                                Q100/hora
-                            </span>
-                        </div>
+                                    {/* INFO */}
+                                    <p className="text-sm text-gray-400 mt-2 truncate">
+                                        ID: {field._id}
+                                    </p>
 
-                        {/* INFO */}
-                        <p className="text-sm text-gray-400 mt-2 truncate">
-                            ID: 123456
-                        </p>
+                                    {/* BOTONES */}
+                                    <div className="flex gap-3 mt-5">
+                                        <button
+                                            className="flex-1 py-2 rounded-lg bg-main-blue text-white font-medium hover:opacity-90 transition"
+                                            onClick={() => {
+                                                setSelectedField(field);
+                                                setOpenModal(true);
+                                            }}
+                                        >
+                                            ✏️ Editar
+                                        </button>
 
-                        {/* BOTONES */}
-                        <div className="flex gap-3 mt-5">
-                            <button className="flex-1 py-2 rounded-lg bg-main-blue text-white font-medium hover:opacity-90 transition">
-                                ✏️ Editar
-                            </button>
+                                        <button
+                                            className="flex-1 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition"
+                                            onClick={() =>
+                                                openConfirm({
+                                                    title: "Eliminar campo",
+                                                    message: `¿Eliminar ${field.fieldName}?`,
+                                                    onConfirm: () => deleteField(field._id),
+                                                })
+                                            }
+                                        >
+                                            🗑️ Eliminar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
 
-                            <button className="flex-1 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition">
-                                🗑️ Eliminar
-                            </button>
-                        </div>
-                    </div>
                 </div>
+            )}
 
-            </div>
+            {/* MODAL */}
+            <FieldModal
+                isOpen={openModal}
+                onClose={() => {
+                    setOpenModal(false);
+                    setSelectedField(null);
+                }}
+                field={selectedField}
+            />
         </div>
     );
 };
